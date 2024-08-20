@@ -3,12 +3,18 @@ import { body, param } from "express-validator";
 import { ProjectController } from "../controllers/ProjectController";
 import { handleInputErrors } from "../middleware/validation";
 import { TaskController } from "../controllers/TaskController";
+import { TeamMemberController } from "../controllers/TeamController";
 import { ProjectExists } from "../middleware/project";
-import { taskExists } from "../middleware/task";
+import { hasAuthorization, taskExists } from "../middleware/task";
 import { taskBelongsToProject } from "../middleware/task";
+import { authenticate } from "../middleware/auth";
+import { NoteController } from "../controllers/NoteController";
+
+
 
 const router = Router()
 
+router.use(authenticate) // Middleware para proteger las rutas que estan en el router
 
 router.post('/', 
     body('projectName')
@@ -18,7 +24,6 @@ router.post('/',
     body('description')
         .notEmpty().withMessage('Description is required'),
     handleInputErrors,
-    
     ProjectController.createProject
 )
 
@@ -58,7 +63,8 @@ router.delete('/:id',
 router.param('projectId', ProjectExists) // Middleware to validate project exists
 
 router.post('/:projectId/tasks',
-    body('taskName')
+    hasAuthorization,
+    body('name')
         .notEmpty().withMessage('Task name is required'),
     body('description')
         .notEmpty().withMessage('Description is required'),
@@ -82,8 +88,9 @@ router.get('/:projectId/tasks/:taskId',
 )
 
 router.put('/:projectId/tasks/:taskId',
+    hasAuthorization,
     param('taskId').isMongoId().withMessage('Invalid task id'),
-    body('taskName')
+    body('name')
         .notEmpty().withMessage('Task name is required'),
     body('description')
         .notEmpty().withMessage('Description is required'),
@@ -92,6 +99,7 @@ router.put('/:projectId/tasks/:taskId',
 )
 
 router.delete('/:projectId/tasks/:taskId',
+    hasAuthorization,
     param('taskId').isMongoId().withMessage('Invalid task id'),
     handleInputErrors,
     TaskController.deleteTask
@@ -104,6 +112,51 @@ router.post('/:projectId/tasks/:taskId/status',
         .isIn(['pending', 'on-hold', 'in-progress', 'under-review', 'completed']).withMessage('Invalid status'),
     handleInputErrors,
     TaskController.updateTaskStatus
+)
+
+/** Routes for teams */
+
+router.post('/:projectId/team/find',
+    body('email')
+        .notEmpty().withMessage('Email is required')
+        .isEmail().withMessage('Invalid email'),
+    handleInputErrors,
+    TeamMemberController.findMemberByEmail
+)
+
+router.get('/:projectId/team', TeamMemberController.getProjectTeam)
+
+router.post('/:projectId/team',
+    body('id')
+        .isMongoId().withMessage('Invalid user id'),
+    handleInputErrors,
+    TeamMemberController.addMemberById
+)
+
+router.delete('/:projectId/team/:userId',
+    param('userId')
+        .isMongoId().withMessage('Invalid user id'),
+    handleInputErrors,
+    TeamMemberController.removeMemberById
+)
+
+/** Routes for notes */
+
+router.post('/:projectId/tasks/:taskId/notes',
+    body('content')
+        .notEmpty().withMessage('Content is required'),
+    handleInputErrors,
+    NoteController.createNote
+)
+
+router.get('/:projectId/tasks/:taskId/notes',
+    NoteController.getTaskNotes
+)
+
+router.delete('/:projectId/tasks/:taskId/notes/:noteId',
+    param('noteId').isMongoId().withMessage('Invalid note id'),
+    handleInputErrors,
+    NoteController.deleteNote
 )
 
 export default router

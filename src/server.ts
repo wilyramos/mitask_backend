@@ -4,6 +4,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { corsConfig } from './config/cors';
 import { connectDB } from './config/db';
+import authRoutes from './routes/authRoutes';
 import projectRoutes from './routes/projectRoutes';
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(express.json()); //Middleware para que express pueda entender json
 
 //Router
 
+app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 
 

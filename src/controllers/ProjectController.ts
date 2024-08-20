@@ -6,6 +6,11 @@ export class ProjectController {
     static createProject = async (req: Request, res: Response) => {
         
         const project = new Project(req.body);
+
+        // asigna un manager
+
+        project.manager = req.user.id; // req.user._id es el id del usuario autenticado
+        
         try {
             await project.save();
             res.send('project created');
@@ -15,14 +20,16 @@ export class ProjectController {
     }
   
     static getAllProjects = async (req: Request, res: Response) => {
-        
         try {
             const projects = await Project.find({
-                
-            });
-            res.json(projects);
+                $or: [
+                    {manager: {$in: req.user.id}},
+                    {team: {$in: req.user.id}} // Busca los proyectos donde el usuario autenticado esté en el equipo 
+                ]
+            })
+            res.json(projects)
         } catch (error) {
-            console.log(error);
+            console.log(error)
         }
     }
 
@@ -34,6 +41,11 @@ export class ProjectController {
             if (!project) {
                 const error = new Error('Project not found'); 
                 return res.status(404).json({error: error.message}); 
+            }
+
+            if(project.manager.toString() !== req.user.id.toString() && !project.team.includes(req.user.id.toString())) {
+                const error = new Error('Acción no autorizada'); 
+                return res.status(403).json({error: error.message});
             }
             res.json(project);
         } catch (error) {
@@ -50,6 +62,11 @@ export class ProjectController {
             if (!project) {
                 const error = new Error('Project not found'); 
                 return res.status(404).json({error: error.message}); 
+            }
+
+            if(project.manager.toString() !== req.user.id) {
+                const error = new Error('Sin autorización para realizar esta acción'); 
+                return res.status(403).json({error: error.message});
             }
 
             project.clientName = req.body.clientName;
@@ -73,7 +90,13 @@ export class ProjectController {
             if (!project) {
                 const error = new Error('Project not found'); 
                 return res.status(404).json({error: error.message}); 
-            }            
+            }     
+            // Verificar si el usuario autenticado es el manager del proyecto
+            if(project.manager.toString() !== req.user.id) {
+                const error = new Error('Sin autorización para realizar esta acción'); 
+                return res.status(403).json({error: error.message});
+            }
+
             // Añadir mas validaciones con permisos
 
             await project.deleteOne();            
