@@ -10,7 +10,7 @@ declare global {
 }
 
 
-export async function ProjectExists(req: Request, res: Response, next: NextFunction) {
+export async function projectExists(req: Request, res: Response, next: NextFunction) {
     // Check if project exists
     try {
         const { projectId } = req.params;        
